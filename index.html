@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Explorer | 圖示搜尋工具</title>
+    <!-- Use Vue 3 from CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-color: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.4);
+            --success-color: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        #app {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            padding: 1rem 0;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #60a5fa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-color);
+            backdrop-filter: blur(12px);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            flex-wrap: wrap;
+        }
+
+        .upload-btn {
+            position: relative;
+            overflow: hidden;
+            background: var(--accent-color);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--accent-glow);
+            background: #2563eb;
+        }
+
+        .upload-btn input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .upload-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .search-container {
+            flex: 1;
+            min-width: 300px;
+            position: relative;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: rgba(15, 23, 42, 0.6);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .search-container input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+
+        .search-container svg {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--text-secondary);
+        }
+
+        .stats {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .svg-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 1.25rem;
+            overflow-y: auto;
+            padding: 1rem 0.5rem;
+            /* Scrollbar styling */
+        }
+        
+        .svg-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+        .svg-grid::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+        .svg-grid::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+        .svg-grid::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .svg-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 1.25rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            backdrop-filter: blur(8px);
+        }
+
+        .svg-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-color);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3), 0 0 15px var(--accent-glow);
+        }
+
+        .svg-preview {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+        }
+
+        .svg-preview svg, .svg-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+            /* Ensure icons can take current color if they support it, or just display as is */
+        }
+
+        .svg-name {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-align: center;
+            word-break: break-all;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .svg-card:hover .svg-name {
+            color: var(--text-primary);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--success-color);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 2rem;
+            font-weight: 500;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+            z-index: 50;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            color: var(--text-secondary);
+            text-align: center;
+            gap: 1rem;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            opacity: 0.5;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>SVG Explorer</h1>
+            <p class="subtitle">選擇本地資料夾，快速搜尋與預覽專案內的 SVG 圖示</p>
+        </header>
+
+        <div class="controls">
+            <label class="upload-btn">
+                <span v-if="isLoading">
+                    <span class="loading-spinner"></span> 載入中...
+                </span>
+                <span v-else style="display: flex; align-items: center; gap: 0.5rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                    選擇資料夾
+                </span>
+                <input type="file" webkitdirectory directory multiple @change="handleFolderSelect" :disabled="isLoading">
+            </label>
+
+            <div class="search-container">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input 
+                    type="text" 
+                    v-model="searchQuery" 
+                    placeholder="搜尋圖示名稱..." 
+                    :disabled="svgFiles.length === 0"
+                >
+            </div>
+
+            <div class="stats" v-if="svgFiles.length > 0">
+                找到 {{ filteredFiles.length }} / {{ svgFiles.length }} 個圖示
+            </div>
+        </div>
+
+        <div v-if="svgFiles.length === 0 && !isLoading" class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <h2>尚未載入圖示</h2>
+            <p>請點擊「選擇資料夾」按鈕，選取包含 SVG 檔案的專案目錄</p>
+        </div>
+
+        <div v-else-if="filteredFiles.length === 0 && svgFiles.length > 0" class="empty-state">
+            <h2>無搜尋結果</h2>
+            <p>找不到符合「{{ searchQuery }}」的圖示</p>
+        </div>
+
+        <div v-else class="svg-grid">
+            <div 
+                v-for="file in filteredFiles" 
+                :key="file.path" 
+                class="svg-card"
+                @click="copySvgName(file.name)"
+                :title="'點擊複製名稱: ' + file.name"
+            >
+                <!-- Render SVG via image data URL for safety & styling -->
+                <div class="svg-preview" v-html="file.content"></div>
+                <div class="svg-name">{{ file.name }}</div>
+            </div>
+        </div>
+
+        <div class="toast" :class="{ show: showToast }">
+            {{ toastMessage }}
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+
+        createApp({
+            setup() {
+                const svgFiles = ref([]);
+                const searchQuery = ref('');
+                const isLoading = ref(false);
+                const showToast = ref(false);
+                const toastMessage = ref('');
+                let toastTimeout = null;
+
+                const handleFolderSelect = async (event) => {
+                    const files = event.target.files;
+                    if (!files || files.length === 0) return;
+
+                    isLoading.value = true;
+                    svgFiles.value = [];
+                    searchQuery.value = '';
+
+                    const validFiles = Array.from(files).filter(file => file.name.toLowerCase().endsWith('.svg'));
+                    
+                    // Read files in chunks to prevent UI blocking for large folders
+                    const chunkSize = 50;
+                    for (let i = 0; i < validFiles.length; i += chunkSize) {
+                        const chunk = validFiles.slice(i, i + chunkSize);
+                        const promises = chunk.map(file => {
+                            return new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                    // Process SVG content to assure it has width/height or viewBox scaling properly
+                                    let content = e.target.result;
+                                    // Basic sanitization
+                                    if(content.includes('<script')) {
+                                        content = '<svg viewBox="0 0 24 24"><text y="12" fill="red">Error</text></svg>';
+                                    }
+                                    resolve({
+                                        name: file.name,
+                                        path: file.webkitRelativePath || file.name,
+                                        content: content
+                                    });
+                                };
+                                reader.onerror = () => {
+                                    resolve(null);
+                                };
+                                reader.readAsText(file);
+                            });
+                        });
+
+                        const results = await Promise.all(promises);
+                        svgFiles.value.push(...results.filter(r => r !== null));
+                        
+                        // Small delay to allow UI refresh
+                        await new Promise(r => setTimeout(r, 10));
+                    }
+
+                    isLoading.value = false;
+                    
+                    if (svgFiles.value.length > 0) {
+                        displayToast(`成功載入 ${svgFiles.value.length} 個 SVG 圖示`);
+                    } else {
+                        displayToast('選取的資料夾中找不到 SVG 檔案');
+                    }
+                };
+
+                const filteredFiles = computed(() => {
+                    const query = searchQuery.value.toLowerCase().trim();
+                    if (!query) return svgFiles.value;
+
+                    return svgFiles.value.filter(file => 
+                        file.name.toLowerCase().includes(query)
+                    );
+                });
+
+                const copySvgName = (name) => {
+                    // Extract name without extension for convenience
+                    const nameWithoutExt = name.replace(/\.svg$/i, '');
+                    navigator.clipboard.writeText(nameWithoutExt).then(() => {
+                        displayToast(`已複製: ${nameWithoutExt}`);
+                    }).catch(() => {
+                        displayToast('複製失敗，請手動選取');
+                    });
+                };
+
+                const displayToast = (msg) => {
+                    toastMessage.value = msg;
+                    showToast.value = true;
+                    
+                    if (toastTimeout) clearTimeout(toastTimeout);
+                    toastTimeout = setTimeout(() => {
+                        showToast.value = false;
+                    }, 3000);
+                };
+
+                return {
+                    svgFiles,
+                    searchQuery,
+                    filteredFiles,
+                    isLoading,
+                    handleFolderSelect,
+                    copySvgName,
+                    showToast,
+                    toastMessage
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
