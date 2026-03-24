@@ -184,7 +184,7 @@
             background: var(--surface-color);
             border: 1px solid var(--border-color);
             border-radius: 0.75rem;
-            padding: 1.25rem 1rem;
+            padding: 2rem 1rem 1rem;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -199,6 +199,19 @@
             transform: translateY(-4px);
             border-color: var(--accent-color);
             box-shadow: 0 10px 20px rgba(0,0,0,0.3), 0 0 15px var(--accent-glow);
+        }
+
+        .color-badge {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success-color);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            font-size: 0.6rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 1rem;
+            pointer-events: none;
         }
 
         .svg-preview {
@@ -346,6 +359,9 @@
                 @click="copySvgName(file.name)"
                 :title="'點擊複製名稱: ' + file.name"
             >
+                <div v-if="file.isCurrentColor" class="color-badge" title="支援 currentColor">
+                    currentColor
+                </div>
                 <!-- Render SVG via image data URL for safety & styling -->
                 <div class="svg-preview" v-html="file.content"></div>
                 <div class="svg-name">{{ file.name }}</div>
@@ -396,7 +412,8 @@
                                     resolve({
                                         name: file.name,
                                         path: file.webkitRelativePath || file.name,
-                                        content: content
+                                        content: content,
+                                        isCurrentColor: /currentColor/i.test(content)
                                     });
                                 };
                                 reader.onerror = () => {
